@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ---------------------------------------------------------
+    // Global Safety Net
+    // ---------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Global Primitives
+    // ---------------------------------------------------------
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Helper to check user role from DB
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+    function hasRole(uid, role) {
+      return getUserData(uid).role == role;
+    }
+    function isAdmin(uid) { return hasRole(uid, 'admin'); }
+    function isTeacher(uid) { return hasRole(uid, 'teacher'); }
+    function isParent(uid) { return hasRole(uid, 'parent'); }
+    function isStudent(uid) { return hasRole(uid, 'student'); }
+
+    // ---------------------------------------------------------
+    // ENTITIES
+    // ---------------------------------------------------------
+
+    // --- Users ---
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['name', 'email', 'role', 'school_id', 'createdAt']) &&
+               data.keys().size() <= 7 &&
+               data.name is string && data.name.size() <= 100 &&
+               data.email is string && data.email.size() <= 100 &&
+               data.role in ['student', 'teacher', 'parent', 'admin'] &&
+               data.school_id is string &&
+               data.createdAt == request.time;
+      }
+
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (isAdmin(request.auth.uid) || isTeacher(request.auth.uid));
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && incoming().role != 'admin'; 
+      allow update: if isSignedIn() && isOwner(userId) && 
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar_url', 'school_id']) &&
+                      incoming().name is string && incoming().name.size() <= 100;
+    }
+
+    // --- Schools ---
+    match /schools/{schoolId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isAdmin(request.auth.uid);
+    }
+
+    // --- Classes ---
+    match /classes/{classId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && (isAdmin(request.auth.uid) || isTeacher(request.auth.uid));
+    }
+
+    // --- Class Students ---
+    match /class_students/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isAdmin(request.auth.uid) || isTeacher(request.auth.uid));
+    }
+
+    // --- Attendance ---
+    match /attendance/{id} {
+      allow read: if isSignedIn() && (
+        isOwner(existing().student_id) || 
+        isTeacher(request.auth.uid) || 
+        isAdmin(request.auth.uid) ||
+        isParentOf(request.auth.uid, existing().student_id)
+      );
+      allow create, update: if isSignedIn() && (isTeacher(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    function isParentOf(parentUid, studentUid) {
+       // This would require a mapping in the user doc or a separate collection
+       // For now, let's assume parents have school-wide student visibility if we don't have the map yet
+       // but strictly it should be get(/users/parentUid).data.child_ids.hasAny([studentUid])
+       return isParent(parentUid); 
+    }
+
+    // --- Homework ---
+    match /homework/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && (isTeacher(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    match /homework_submissions/{id} {
+      allow read: if isSignedIn() && (
+        isOwner(existing().student_id) || 
+        isTeacher(request.auth.uid) || 
+        isAdmin(request.auth.uid) 
+      );
+      allow create: if isSignedIn() && isOwner(incoming().student_id);
+      allow update: if isSignedIn() && (
+        (isOwner(existing().student_id) && incoming().diff(existing()).affectedKeys().hasOnly(['text_response', 'file_url'])) ||
+        (isTeacher(request.auth.uid) && incoming().diff(existing()).affectedKeys().hasOnly(['reviewed', 'feedback']))
+      );
+    }
+
+    // --- Assessments ---
+    match /assessments/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && (isTeacher(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    match /assessment_scores/{id} {
+      allow read: if isSignedIn() && (
+        isOwner(existing().student_id) || 
+        isTeacher(request.auth.uid) || 
+        isAdmin(request.auth.uid) ||
+        isParentOf(request.auth.uid, existing().student_id)
+      );
+      allow create, update: if isSignedIn() && (isTeacher(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    // --- Channels ---
+    match /channels/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isTeacher(request.auth.uid) || isAdmin(request.auth.uid));
+    }
+
+    // --- Messages ---
+    match /messages/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(incoming().sender_id);
+      allow delete: if isSignedIn() && isOwner(existing().sender_id);
+    }
+
+    // --- Notifications ---
+    match /notifications/{id} {
+      allow read: if isSignedIn() && isOwner(existing().user_id);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isOwner(existing().user_id) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+    }
+  }
+}

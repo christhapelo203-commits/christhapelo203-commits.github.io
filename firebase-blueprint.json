@@ -1,0 +1,179 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "teacher", "parent", "admin"] },
+        "avatar_url": { "type": "string" },
+        "school_id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role", "createdAt"]
+    },
+    "School": {
+      "title": "School",
+      "description": "Educational institution information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "admin_id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "admin_id", "createdAt"]
+    },
+    "Class": {
+      "title": "Class",
+      "description": "Information about a specific class or subject group",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "grade": { "type": "string" },
+        "teacher_id": { "type": "string" },
+        "school_id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "teacher_id", "school_id", "createdAt"]
+    },
+    "ClassStudent": {
+      "title": "ClassStudent",
+      "description": "Mapping between classes and students",
+      "type": "object",
+      "properties": {
+        "class_id": { "type": "string" },
+        "student_id": { "type": "string" }
+      },
+      "required": ["class_id", "student_id"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Daily attendance record",
+      "type": "object",
+      "properties": {
+        "student_id": { "type": "string" },
+        "class_id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["present", "absent", "late"] },
+        "marked_by": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["student_id", "class_id", "date", "status", "marked_by", "createdAt"]
+    },
+    "Homework": {
+      "title": "Homework",
+      "description": "Homework assignment details",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "subject": { "type": "string" },
+        "due_date": { "type": "string", "format": "date" },
+        "class_id": { "type": "string" },
+        "created_by": { "type": "string" },
+        "attachment_url": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "subject", "due_date", "class_id", "created_by", "createdAt"]
+    },
+    "HomeworkSubmission": {
+      "title": "HomeworkSubmission",
+      "description": "Student submission for a homework assignment",
+      "type": "object",
+      "properties": {
+        "homework_id": { "type": "string" },
+        "student_id": { "type": "string" },
+        "file_url": { "type": "string" },
+        "text_response": { "type": "string" },
+        "submitted_at": { "type": "string", "format": "date-time" },
+        "reviewed": { "type": "boolean" },
+        "feedback": { "type": "string" }
+      },
+      "required": ["homework_id", "student_id", "submitted_at"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "Details about an assessment (test, quiz, etc.)",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "total_marks": { "type": "number" },
+        "subject": { "type": "string" },
+        "class_id": { "type": "string" },
+        "created_by": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type", "date", "total_marks", "class_id", "created_by", "createdAt"]
+    },
+    "AssessmentScore": {
+      "title": "AssessmentScore",
+      "description": "Score record for a student in an assessment",
+      "type": "object",
+      "properties": {
+        "assessment_id": { "type": "string" },
+        "student_id": { "type": "string" },
+        "score": { "type": "number" },
+        "feedback": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["assessment_id", "student_id", "score", "createdAt"]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "Communication channel for a class or group",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "class_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["group", "announcement", "dm"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message within a channel",
+      "type": "object",
+      "properties": {
+        "channel_id": { "type": "string" },
+        "sender_id": { "type": "string" },
+        "content": { "type": "string" },
+        "attachment_url": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["channel_id", "sender_id", "content", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "type": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["user_id", "type", "message", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users": { "schema": "User", "description": "User profiles" },
+    "schools": { "schema": "School", "description": "School details" },
+    "classes": { "schema": "Class", "description": "Classes/Subjects" },
+    "class_students": { "schema": "ClassStudent", "description": "Student enrollment in classes" },
+    "attendance": { "schema": "Attendance", "description": "Attendance records" },
+    "homework": { "schema": "Homework", "description": "Homework assignments" },
+    "homework_submissions": { "schema": "HomeworkSubmission", "description": "Student homework submissions" },
+    "assessments": { "schema": "Assessment", "description": "Assessment entries" },
+    "assessment_scores": { "schema": "AssessmentScore", "description": "Student assessment scores" },
+    "channels": { "schema": "Channel", "description": "Communication channels" },
+    "messages": { "schema": "Message", "description": "Real-time messages" },
+    "notifications": { "schema": "Notification", "description": "User notifications" }
+  }
+}
